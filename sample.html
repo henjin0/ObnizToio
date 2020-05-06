@@ -24,6 +24,9 @@
 <div id="status">Wait...</div>
 <br/>
 Pos X:<span id="posx">NaN</span> Pos Y:<span id="posy">NaN</span>
+<br/>
+battery:<span id="battery">NaN</span>
+<br/>
 
 <script>
     class Toio {
@@ -32,6 +35,10 @@ Pos X:<span id="posx">NaN</span> Pos Y:<span id="posy">NaN</span>
             this.serviceID = "10B20100-5B3B-4571-9508-CF3EFCD7BBAE";
             this.characteristicIDMotor = "10B20102-5B3B-4571-9508-CF3EFCD7BBAE";
             this.characteristicIDPos = "10B20101-5B3B-4571-9508-CF3EFCD7BBAE";
+            this.characteristicIDMotion = "10B20106-5B3B-4571-9508-CF3EFCD7BBAE";
+            this.characteristicIDButton = "10B20107-5B3B-4571-9508-CF3EFCD7BBAE";
+            this.characteristicIDBattery = "10B20108-5B3B-4571-9508-CF3EFCD7BBAE"
+
             this.peripheral = peripheral;
 
             this.peripheralUUID = peripheral.uuid;
@@ -109,6 +116,32 @@ Pos X:<span id="posx">NaN</span> Pos Y:<span id="posy">NaN</span>
             return obj;
         }
 
+        async getMotion(){
+            let readData = await this.peripheral.getService(this.serviceID).getCharacteristic(this.characteristicIDMotion).readWait();
+            let obj = new Object();
+
+            //NOTE: toioの中心から見たポジション
+            obj.isHorizon = readData[1];
+            obj.isCollision = readData[2];
+            obj.isDoubletap = readData[3];
+            obj.atitude = readData[4];
+
+            return obj;
+        }
+
+        async getButtonState(){
+            let readData = await this.peripheral.getService(this.serviceID).getCharacteristic(this.characteristicIDButton).readWait();
+            if(readData[1]==0x80){
+                return true;
+            }else{
+                return false;
+            }
+        }
+
+        async getBatteryState(){
+            let readData = await this.peripheral.getService(this.serviceID).getCharacteristic(this.characteristicIDBattery).readWait();
+            return readData[0];
+        }
 
         async moveAround(leftWheelPower=0, rightWheelPower=0){
             let constraintWheelPower = function(wheelPower){
@@ -180,11 +213,9 @@ Pos X:<span id="posx">NaN</span> Pos Y:<span id="posy">NaN</span>
         }
     }
 
-
     var obniz = new Obniz("XXXX-XXXX");
     obniz.onconnect = async function () {
         await obniz.ble.initWait();
-
 
         var target = {
             localName: "toio Core Cube"
@@ -201,6 +232,7 @@ Pos X:<span id="posx">NaN</span> Pos Y:<span id="posy">NaN</span>
             }
             console.log("found");
             document.getElementById("status").innerText = "Toio is ready!";
+            document.getElementById("battery").innerText = String(await toio.getBatteryState());
 
             try {
 
